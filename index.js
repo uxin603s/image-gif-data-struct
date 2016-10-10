@@ -2,7 +2,7 @@ function lzw_encode(){
 	
 }
 function lzw_decode(lzw_min_code,array){
-	// console.log(lzw_min_code,array)
+	// console.log(lzw_min_code,JSON.parse(JSON.stringify(array)))
 	// return [];
 	var count=Math.pow(2,lzw_min_code);
 	var table=[];
@@ -15,40 +15,40 @@ function lzw_decode(lzw_min_code,array){
 	var code1=array.indexOf(count)
 	if(code1!=-1){
 		array.splice(code1,1)
-	}else{
-		// array.shift();
 	}
+	
 	var code2=array.indexOf(count+1)
 	if(code2!=-1){
 		array.splice(code2,1)
 	}
-	// console.log(table)
+	// console.log(code1,code2)
+	
 	// return []
 	var result=[];
 	var k;
+	
+	// console.log(JSON.parse(JSON.stringify(array)))
 	for(var i in array){
 		if(i==0){
-			k=table[array[i]][0];
+			k=table[array[0]][0];
 			result.push(k);
 			continue;
 		}
 		
-		var color=table[array[i]];
-		console.log(i-1,i,array[i],k)
-		if(color){
-			result=result.concat(color);
-			k=color[0];
-			console.log("y")
-			
+		if(table[array[i]]){
+			result=result.concat(table[array[i]]);
+			k=table[array[i]][0];
 			var tmp=table[array[i-1]].concat(k);
 		}else{
-			console.log("n")
 			k=table[array[i-1]][0];
 			var tmp=table[array[i-1]].concat(k)
 			result=result.concat(tmp);
 		}
+		
+		// console.log(table[array[i]]?'yes':'no',array[i],array[i-1],table.length,tmp)
 		table.push(tmp);
 	}
+	// console.log(table.length)
 	return result;
 }
 function decode_byte(binary_arr){
@@ -56,7 +56,7 @@ function decode_byte(binary_arr){
 	// console.log(JSON.parse(JSON.stringify(binary_arr)))
 	var lzw_min_code=binary_arr.shift();
 	var lzw_len=binary_arr.shift();
-	// console.log(lzw_min_code,lzw_len)
+	
 	var data=binary_arr.splice(0,lzw_len).reverse().map(function(value){
 		var tmp=value.toString(2).split("");
 		while(tmp.length<8)tmp.unshift("0");
@@ -65,10 +65,10 @@ function decode_byte(binary_arr){
 	
 	
 	var lzw_end=binary_arr.shift();
-	
+	// console.log(lzw_min_code,lzw_len,lzw_end)
 	var result=[];
 	while(data.length){
-		var count=(result.length*1+4).toString(2).length;
+		var count=(result.length*1+Math.pow(2,lzw_min_code)).toString(2).length;
 		if(data.length<count){// 補滿8位元用 可捨棄
 			// console.log(count,data)
 			break;
@@ -168,6 +168,7 @@ function ImageDescriptor(binary_arr){
 	console.log("ImageDescriptor")
 	// console.log(JSON.parse(JSON.stringify(binary_arr)))
 	var tmp_arr=binary_arr.splice(0,9);
+	// console.log(tmp_arr)
 	var packed_field_result=packed_field(binary_arr,{
 		LocalColorTableFlag:1,
 		InterlaceFlag:1,
