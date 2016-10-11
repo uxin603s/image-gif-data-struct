@@ -3,7 +3,6 @@ function lzw_encode(){
 }
 function lzw_decode(lzw_min_code,array){
 	// console.log(lzw_min_code,JSON.parse(JSON.stringify(array)))
-	// return [];
 	var count=Math.pow(2,lzw_min_code);
 	var table=[];
 	for(var i=0;i<count;i++){
@@ -181,6 +180,7 @@ function ImageDescriptor(binary_arr){
 	if(packed_field_result.LocalColorTableFlag==1){
 		getColorTable(binary_arr,packed_field_result.LocalColorTableSize);
 	}
+	return tmp_arr;
 }
 function getColorTable(binary_arr,size){
 	var count=Math.pow(2,parseInt(size,2)+1)

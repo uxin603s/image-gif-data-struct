@@ -54,36 +54,53 @@
 			sortFlag:1,
 			globalColorTableSize:3,
 		})
+		var bg_color_index=binary_arr.shift();
+		var pixel_aspect_ratio=binary_arr.shift();
+		// console.log(JSON.parse(JSON.stringify(binary_arr)))
 		if(packed_field_result.globalColorTableFlag==1){
 			image_struct.globalColorTable=getColorTable(binary_arr,packed_field_result.globalColorTableSize);
 		}
 		// console.log(image_struct.globalColorTable)
-		var bg_color_index=binary_arr.shift();
-		var pixel_aspect_ratio=binary_arr.shift();
+		
 		// console.log(image_struct.globalColorTable)
 		console.log(image_struct)
-		
+		var ggwp=[]
 		var start=Date.now();
 		while(binary_arr.length){
 			
 			Extension_process(binary_arr);
 			if(binary_arr[0]==44){//Image Descriptor
-				ImageDescriptor(binary_arr);
+				var qq=ImageDescriptor(binary_arr);
+				qq.shift();
+				var local_image={
+					left:get_canvas_edge(qq),
+					top:get_canvas_edge(qq),
+					width:get_canvas_edge(qq),
+					height:get_canvas_edge(qq),
+				}
 				
+				console.log(qq,local_image)
 				var dd=decode_byte(binary_arr);
-				while(dd.length)
-					console.log(dd.splice(0,image_struct.width).join(""))
+				var canvas=[];
+				while(dd.length){
+					var tmp=dd.splice(0,local_image.width);
+					// console.log(tmp);
+					canvas.push(tmp);
+				}
+				ggwp.push(canvas)
 			}
 			
 			if((Date.now()-start)/1000>1){
 				// binary_arr=binary_arr.map(function(value){
 					// return value.toString("16")
 				// })
-				$scope.binary_arr=binary_arr;
+				// $scope.binary_arr=binary_arr;
 				console.log("超過兩秒 無窮迴圈 ",binary_arr)
 				break;
 			}
 		}
+		$scope.image_struct=image_struct;
+		$scope.ggwp=ggwp;
 	}])
 	
 	$(document).ready(function(){
@@ -103,10 +120,33 @@
 	<input type="file" class="upload" />
 	<textarea></textarea>
 	<div ng-app="app" ng-controller="Ctrl">
-	<img style="width:auto;" ng-src="{{image}}" />
-	<div style="word-break: break-all;">
-	{{binary_arr}}
-	</div>
+		<img style="width:auto;" ng-src="{{image}}" />
+		<div style="word-break: break-all;">
+		{{binary_arr}}
+		</div>
+		<div>
+			<div 
+			style="
+			display:inline-block;
+			width:10px;height:10px;
+			background:rgb({{block.join(',')}});
+			" 
+			ng-repeat="block in image_struct.globalColorTable">
+			</div>
+		</div>
+		<div style="display:inline-block;" ng-repeat="pic in ggwp">
+			<div style="height:10px;" ng-repeat="pic_line in pic">
+				<div 
+				style="
+				display:inline-block;
+				width:10px;height:10px;
+				background:rgb({{image_struct.globalColorTable[pic_line_block].join(',')}});
+				" 
+				ng-repeat="pic_line_block in pic_line track by $index">
+				
+				</div>
+			</div>
+		</div>
 	</div>
 </body>
 </html>
