@@ -1,24 +1,25 @@
-function getData(binary_arr,image_struct,length,name,callback,callback_arg){
+function getData(binary_arr,image_struct,length,callback,callback_arg){
+	var start=image_struct.pointer;
 	if((typeof length)==="number"){
-		var start=image_struct.pointer;
-		var count=image_struct.pointer+length;
-		var value=binary_arr.slice(start,count)
-		var fn=window[callback];
-		if((typeof fn)==="function"){
-			var value=fn(value,callback_arg);
-		}
-		
-		image_struct[name]={start:start,count:count,value:value};
-		image_struct.pointer=count;
+		var count=start+length;
 	}else{
-		var fn=window[length];
-		if((typeof fn)==="function"){
-			var value=fn(binary_arr,image_struct);
-		}
+		var count=start
+		count+=binary_arr[image_struct.pointer+length.start];//長度
+		count+=length.start+1;
+		if(length.end)
+			count+=length.end;
 	}
 	
+	image_struct.pointer=count;
+	
+	var value=binary_arr.slice(start,count);
 	
 	
+	var fn=window[callback];
+	if((typeof fn)==="function"){
+		var value=fn(value,callback_arg);
+	}
+	return {start:start,count:count,value:value};
 }
 function getFormat(array){
 	return array.map(function(value){
@@ -51,46 +52,72 @@ function getColorTable(array){
 
 function PlainTextExtension(binary_arr){
 	console.log("PlainTextExtension")
-	if(binary_arr[0]==33 && binary_arr[1]==1){
-		binary_arr.shift()
-		binary_arr.shift()
-		var tmp_arr=binary_arr.splice(0,binary_arr.shift());
-		binary_arr.shift()
-	}
+	// if(binary_arr[0]==33 && binary_arr[1]==1){
+		// binary_arr.shift()
+		// binary_arr.shift()
+		// var tmp_arr=binary_arr.splice(0,binary_arr.shift());
+		// binary_arr.shift()
+	// }
 }
 function GraphicsControlExtension(binary_arr){
 	console.log("GraphicsControlExtension")
-	if(binary_arr[0]==33 && binary_arr[1]==249){
-		var tmp_arr=binary_arr.splice(0,8);
-	}
+	// if(binary_arr[0]==33 && binary_arr[1]==249){
+		// var tmp_arr=binary_arr.splice(0,8);
+	// }
 }
 function CommentExtension(binary_arr){
 	console.log("CommentExtension")
-	if(binary_arr[0]==33 && binary_arr[1]==254){
-		binary_arr.shift()
-		binary_arr.shift()
-		var tmp_arr=binary_arr.splice(0,binary_arr.shift());
-		binary_arr.shift()
-	}
+	// if(binary_arr[0]==33 && binary_arr[1]==254){
+		// binary_arr.shift()
+		// binary_arr.shift()
+		// var tmp_arr=binary_arr.splice(0,binary_arr.shift());
+		// binary_arr.shift()
+	// }
 }
 function ApplicationExtension(binary_arr){
 	console.log("ApplicationExtension")
-	if(binary_arr[0]==33 && binary_arr[1]==255){
-		binary_arr.shift()
-		binary_arr.shift()
-		var tmp_arr=binary_arr.splice(0,binary_arr.shift());
-		binary_arr.shift();
-		binary_arr.shift();
-		binary_arr.shift();
-		binary_arr.shift();
-		binary_arr.shift();
-	}
+	// if(binary_arr[0]==33 && binary_arr[1]==255){
+		// binary_arr.shift()
+		// binary_arr.shift()
+		// var tmp_arr=binary_arr.splice(0,binary_arr.shift());
+		// binary_arr.shift();
+		// binary_arr.shift();
+		// binary_arr.shift();
+		// binary_arr.shift();
+		// binary_arr.shift();
+	// }
 }
-function lzw_encode(){
+
+function decode_byte(array){
+	console.log("decode_byte")
+	// console.log(array)
+	// console.log(JSON.parse(JSON.stringify(binary_arr)))
+	var lzw_min_code=array[0];
+	var lzw_len=array[1];
 	
+	var data=array.slice(2,array.length-2).reverse().map(function(value){
+		var tmp=value.toString(2).split("");
+		while(tmp.length<8)tmp.unshift("0");
+		return tmp.join("");
+	}).join("").split("");
+	
+	var lzw_end=array[lzw_len+2];
+	// console.log(lzw_min_code,lzw_len,lzw_end,data)
+	var result=[];
+	while(data.length){
+		var count=(result.length*1+Math.pow(2,lzw_min_code)).toString(2).length;
+		if(data.length<count){// 補滿8位元用 可捨棄
+			break;
+		}
+		var t1=data.splice(-1*count,count).join("");
+		var t2=parseInt(t1,2);
+		result.push(t2);
+	}
+	
+	return lzw_decode(lzw_min_code,result);
 }
+
 function lzw_decode(lzw_min_code,array){
-	// console.log(lzw_min_code,JSON.parse(JSON.stringify(array)))
 	var count=Math.pow(2,lzw_min_code);
 	var table=[];
 	for(var i=0;i<count;i++){
@@ -137,61 +164,4 @@ function lzw_decode(lzw_min_code,array){
 	}
 	// console.log(table.length)
 	return result;
-}
-function decode_byte(binary_arr){
-	console.log("decode_byte")
-	// console.log(JSON.parse(JSON.stringify(binary_arr)))
-	var lzw_min_code=binary_arr.shift();
-	var lzw_len=binary_arr.shift();
-	
-	var data=binary_arr.splice(0,lzw_len).reverse().map(function(value){
-		var tmp=value.toString(2).split("");
-		while(tmp.length<8)tmp.unshift("0");
-		return tmp.join("");
-	}).join("").split("");
-	
-	
-	var lzw_end=binary_arr.shift();
-	// console.log(lzw_min_code,lzw_len,lzw_end)
-	var result=[];
-	while(data.length){
-		var count=(result.length*1+Math.pow(2,lzw_min_code)).toString(2).length;
-		if(data.length<count){// 補滿8位元用 可捨棄
-			// console.log(count,data)
-			break;
-		}
-		var t1=data.splice(-1*count,count).join("");
-		var t2=parseInt(t1,2);
-		result.push(t2);
-	}
-	// console.log(JSON.parse(JSON.stringify(result)))
-	
-	return lzw_decode(lzw_min_code,result);
-	// return [];
-}
-
-
-
-
-
-
-
-function ImageDescriptor(binary_arr){
-	console.log("ImageDescriptor")
-	// console.log(JSON.parse(JSON.stringify(binary_arr)))
-	var tmp_arr=binary_arr.splice(0,9);
-	// console.log(tmp_arr)
-	var packed_field_result=packed_field(binary_arr,{
-		LocalColorTableFlag:1,
-		InterlaceFlag:1,
-		SortFlag:1,
-		ReservedForFutureUse:2,
-		LocalColorTableSize:3,
-	})
-	// console.log(JSON.parse(JSON.stringify(binary_arr)))
-	// console.log(packed_field_result.LocalColorTableFlag)
-	if(packed_field_result.LocalColorTableFlag==1){
-		getColorTable(binary_arr,packed_field_result.LocalColorTableSize);
-	}
-	return tmp_arr;
 }

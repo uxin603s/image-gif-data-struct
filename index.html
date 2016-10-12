@@ -8,7 +8,7 @@
 	<script>
 	angular.module("app",[]).controller("Ctrl",['$scope',function($scope){
 		var image="data:image/gif;base64,R0lGODlhCgAKAJEAAP////8AAAAA/wAAACH5BAAAAAAALAAAAAAKAAoAAAIWjC2Zhyoc3DOgAnXslfqo3mCMBJFMAQA7";
-		// var image="data:image/gif;base64,R0lGODlhCwAdAKIAAP8AAAD/AP//AI6OjgAAAP///wAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQEZAAAACwAAAAACwAdAAADMHi63N4jvkghretipSXTk/eM5CeaG9ehF5seoPOWNBPcz603em/3uAUwKPQ5drVkAgAh+QQEMgAAACwCAAsABwAQAAADGXgnrMsNyknhswq7zff4ziceYmmeoxmCRwIAIfkEBGQAAAAsAgACAAcAEAAAAxl4B6zLDcpJ4bMKu833+M4nHmJpnqMZgkcCADs=";		
+		var image="data:image/gif;base64,R0lGODlhCwAdAKIAAP8AAAD/AP//AI6OjgAAAP///wAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQEZAAAACwAAAAACwAdAAADMHi63N4jvkghretipSXTk/eM5CeaG9ehF5seoPOWNBPcz603em/3uAUwKPQ5drVkAgAh+QQEMgAAACwCAAsABwAQAAADGXgnrMsNyknhswq7zff4ziceYmmeoxmCRwIAIfkEBGQAAAAsAgACAAcAEAAAAxl4B6zLDcpJ4bMKu833+M4nHmJpnqMZgkcCADs=";		
 		$scope.image=image;
 		var image_string=image.split(',');
 		var byteString = atob(image_string[1]);
@@ -21,91 +21,83 @@
 		}
 		var image_struct={
 			pointer:0,
+			block:[],
 		}
 		
-		getData(binary_arr,image_struct,6,"format","getFormat");
-		getData(binary_arr,image_struct,2,"width","getEdge");
-		getData(binary_arr,image_struct,2,"height","getEdge");
-		getData(binary_arr,image_struct,1,"packedField","getPackedField",{
+		image_struct.format=getData(binary_arr,image_struct,6,"getFormat");
+		image_struct.width=getData(binary_arr,image_struct,2,"getEdge");
+		image_struct.height=getData(binary_arr,image_struct,2,"getEdge");
+		image_struct.packedField=getData(binary_arr,image_struct,1,"getPackedField",{
 			globalColorTableFlag:1,
 			colorResultion:3,
 			sortFlag:1,
 			globalColorTableSize:3,
 		});
-		getData(binary_arr,image_struct,1,"bgColorIndex","getEdge");
-		getData(binary_arr,image_struct,1,"pixelAspectRatio","getEdge");
+		image_struct.bgColorIndex=getData(binary_arr,image_struct,1,"getEdge");
+		image_struct.pixelAspectRatio=getData(binary_arr,image_struct,1,"getEdge");
 		if(image_struct.packedField.value.globalColorTableFlag==1){
 			var size=image_struct.packedField.value.globalColorTableSize;
 			var count=Math.pow(2,parseInt(size,2)+1)*3;
-			getData(binary_arr,image_struct,count,"globalColorTable","getColorTable");
+			image_struct.colorTable=getData(binary_arr,image_struct,count,"getColorTable");
 		}
 		var start=Date.now();
 		var count=0;
 		while(true){
-			var first=binary_arr[image_struct.pointer];
-			var second=binary_arr[image_struct.pointer+1];
-			if(first==33){
+			var block={};
+			
+			if(binary_arr[image_struct.pointer]==33){
+				var second=binary_arr[image_struct.pointer+1];
 				var second_check_arr={
-					1:"PlainTextExtension",249:"GraphicsControlExtension",254:"CommentExtension",255:"ApplicationExtension",
+					1:{name:"PlainTextExtension",length:{start:2}},
+					249:{name:"GraphicsControlExtension",length:8},
+					254:{name:"CommentExtension",length:{start:2}},
+					255:{name:"ApplicationExtension",length:{start:2,end:5}},
 				};
-				if(second_check_arr[second]){
-					// getData(binary_arr,image_struct,second_check_arr[second]);
+				var length=second_check_arr[second].length;
+				var name=second_check_arr[second].name;
+				// console.log(second,second_check_arr[second])
+				block[name]=getData(binary_arr,image_struct,length,name);
+				// console.log(name)
+			}
+			
+			if(binary_arr[image_struct.pointer]==44){
+				console.log("descriptor")
+				image_struct.pointer++;
+				block.left=getData(binary_arr,image_struct,2,"getEdge");
+				block.top=getData(binary_arr,image_struct,2,"getEdge");
+				block.width=getData(binary_arr,image_struct,2,"getEdge");
+				block.height=getData(binary_arr,image_struct,2,"getEdge");
+				block.packedField=getData(binary_arr,image_struct,1,"getPackedField",{
+					LocalColorTableFlag:1,
+					InterlaceFlag:1,
+					SortFlag:1,
+					ReservedForFutureUse:2,
+					LocalColorTableSize:3,
+				});
+				if(block.packedField.value.LocalColorTableFlag==1){
+					var size=block.packedField.value.globalColorTableSize;
+					var count=Math.pow(2,parseInt(size,2)+1)*3;
+					block.colorTable=getData(binary_arr,image_struct,count,"getColorTable");
 				}
-			}
-			
-			if(first==44){
-				
+				block.image_block=getData(binary_arr,image_struct,{start:1,end:1},"decode_byte");
 				
 			}
+			image_struct.block.push(block);
 			
-			if(first==59){
+			if(binary_arr[image_struct.pointer]==59){
 				break;
 			}
-			if((Date.now()-start)/1000>1){
-				console.log("超過兩秒 無窮迴圈 ",binary_arr)
+			if((Date.now()-start)/1000>1 || ++count>10){
+				console.log(" 無窮迴圈 ");
+				console.log(binary_arr.slice(image_struct.pointer,binary_arr.length));				
 				break;
 			}
-			count++;
 		}
-
-		// getData(binary_arr,image_struct,1,"bgColorIndex","ExtensionProcess");
-		// ExtensionProcess(binary_arr,image_struct);
-		return 
-		// if(binary_arr.pop()!=59){//image end 3B
-			// throw "沒有圖片結尾";
-		// }
-			
+		// console.log(image_struct.block)
 		console.log(image_struct)
-		var ggwp=[]
-		var start=Date.now();
-		while(binary_arr.length){
-			
-			Extension_process(binary_arr,image_struct);
-			if(binary_arr[0]==44){//Image Descriptor
-				var qq=ImageDescriptor(binary_arr);
-				qq.shift();
-				var local_image={
-					left:get_canvas_edge(qq),
-					top:get_canvas_edge(qq),
-					width:get_canvas_edge(qq),
-					height:get_canvas_edge(qq),
-				}
-				
-				console.log(qq,local_image)
-				var dd=decode_byte(binary_arr);
-				var canvas=[];
-				while(dd.length){
-					var tmp=dd.splice(0,local_image.width);
-					// console.log(tmp);
-					canvas.push(tmp);
-				}
-				ggwp.push(canvas)
-			}
-			
-			
-		}
+		
 		$scope.image_struct=image_struct;
-		$scope.ggwp=ggwp;
+		$scope.block_size=10;
 	}])
 	
 	$(document).ready(function(){
@@ -127,30 +119,42 @@
 	<div ng-app="app" ng-controller="Ctrl">
 		<img style="width:auto;" ng-src="{{image}}" />
 		<div style="word-break: break-all;">
-		{{binary_arr}}
 		</div>
 		<div>
 			<div 
 			style="
 			display:inline-block;
 			width:10px;height:10px;
-			background:rgb({{block.join(',')}});
+			background:rgb({{color.join(',')}});
 			" 
-			ng-repeat="block in image_struct.globalColorTable">
+			ng-repeat="color in image_struct.colorTable.value">
 			</div>
 		</div>
-		<div style="display:inline-block;vertical-align: top;" ng-repeat="pic in ggwp">
-			<div style="height:10px;vertical-align: top;" ng-repeat="pic_line in pic">
-				<div 
-				style="
-				vertical-align: top;
-				display:inline-block;
-				width:10px;height:10px;
-				background:rgb({{image_struct.globalColorTable[pic_line_block].join(',')}});
-				" 
-				ng-repeat="pic_line_block in pic_line track by $index">
 				
+		<div style="position:relative;">
+			<div 
+			style="
+			float:left;
+			margin-top:{{block_size*block.top.value}}px;
+			margin-left:{{block_size*block.left.value}}px;
+			width:{{block_size*block.width.value}}px;
+			height:{{block_size*block.height.value}}px;
+			"
+			ng-if="block.image_block"
+			ng-repeat="block in image_struct.block"
+			>
+			
+				<div  
+				style="
+				vertical-align:top;
+				float:left;
+				width:{{block_size}}px;height:{{block_size}}px;
+				background:rgb({{image_struct.colorTable.value[color_index].join(',')}});
+				" 
+				
+				ng-repeat="color_index in block.image_block.value track by $index">
 				</div>
+				<div style="clear:both;"></div>
 			</div>
 		</div>
 	</div>
