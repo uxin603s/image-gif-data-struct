@@ -8,7 +8,7 @@
 	<script>
 	angular.module("app",[]).controller("Ctrl",['$scope',function($scope){
 		var image="data:image/gif;base64,R0lGODlhCgAKAJEAAP////8AAAAA/wAAACH5BAAAAAAALAAAAAAKAAoAAAIWjC2Zhyoc3DOgAnXslfqo3mCMBJFMAQA7";
-		var image="data:image/gif;base64,R0lGODlhCwAdAKIAAP8AAAD/AP//AI6OjgAAAP///wAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQEZAAAACwAAAAACwAdAAADMHi63N4jvkghretipSXTk/eM5CeaG9ehF5seoPOWNBPcz603em/3uAUwKPQ5drVkAgAh+QQEMgAAACwCAAsABwAQAAADGXgnrMsNyknhswq7zff4ziceYmmeoxmCRwIAIfkEBGQAAAAsAgACAAcAEAAAAxl4B6zLDcpJ4bMKu833+M4nHmJpnqMZgkcCADs=";		
+		// var image="data:image/gif;base64,R0lGODlhCwAdAKIAAP8AAAD/AP//AI6OjgAAAP///wAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQEZAAAACwAAAAACwAdAAADMHi63N4jvkghretipSXTk/eM5CeaG9ehF5seoPOWNBPcz603em/3uAUwKPQ5drVkAgAh+QQEMgAAACwCAAsABwAQAAADGXgnrMsNyknhswq7zff4ziceYmmeoxmCRwIAIfkEBGQAAAAsAgACAAcAEAAAAxl4B6zLDcpJ4bMKu833+M4nHmJpnqMZgkcCADs=";		
 		$scope.image=image;
 		var image_string=image.split(',');
 		var byteString = atob(image_string[1]);
@@ -19,56 +19,68 @@
 			var value=byteString.charCodeAt(i);
 			binary_arr.push(value)
 		}
-		// var tt=binary_arr.map(function(value){
-			// var tmp=value.toString(16).split("")
-			// while(tmp.length<2)tmp.unshift("0")
-			// return tmp.join("").toUpperCase();
-		// })
-		// var tt1="47 49 46 38 39 61 0B 00 1D 00 A2 05 00 FF 00 00 00 FF 00 FF FF 00 8E 8E 8E 00 00 00 FF FF FF 00 00 00 00 00 00 21 FF 0B 4E 45 54 53 43 41 50 45 32 2E 30 03 01 00 00 00 21 F9 04 04 64 00 00 00 2C 00 00 00 00 0B 00 1D 00 00 03 30 48 BA DC DE 23 BE 48 21 AD EB 62 A5 25 D3 93 F7 8C E4 27 9A 1B D7 A1 17 9B 1E A0 F3 96 34 13 DC CF AD 37 7A 6F F7 B8 05 30 28 F4 39 76 B5 64 02 00 21 F9 04 04 32 00 00 00 2C 02 00 0B 00 07 00 10 00 00 03 19 78 27 AC CB 0D CA 49 E1 B3 0A BB CD F7 F8 CE 27 1E 62 69 9E A3 19 82 47 02 00 21 F9 04 04 64 00 00 00 2C 02 00 02 00 07 00 10 00 00 03 19 78 07 AC CB 0D CA 49 E1 B3 0A BB CD F7 F8 CE 27 1E 62 69 9E A3 19 82 45 02 00 3B".split(" ")
-		// binary_arr=tt1.map(function(value){
-			// return parseInt(value,16);
-		// })
-		// console.log(binary_arr)
-		// for(var i in tt){
-			// if(tt[i]==tt1[i]){
-				// console.log(tt[i]==tt1[i],i,tt[i],tt1[i]);
-			// }else{
-				// console.log(tt[i]==tt1[i],i,tt[i],tt1[i]);
-			// }
-		// }
-		
-		
-		
-		if(binary_arr.pop()!=59){//image end 3B
-			throw "沒有圖片結尾";
-		}
 		var image_struct={
-			format:get_format(binary_arr),
-			width:get_canvas_edge(binary_arr),
-			height:get_canvas_edge(binary_arr),
-			globalColorTable:[],
+			pointer:0,
 		}
-		var packed_field_result=packed_field(binary_arr,{
+		
+		getData(binary_arr,image_struct,6,"format","getFormat");
+		getData(binary_arr,image_struct,2,"width","getEdge");
+		getData(binary_arr,image_struct,2,"height","getEdge");
+		getData(binary_arr,image_struct,1,"packedField","getPackedField",{
 			globalColorTableFlag:1,
 			colorResultion:3,
 			sortFlag:1,
 			globalColorTableSize:3,
-		})
-		var bg_color_index=binary_arr.shift();
-		var pixel_aspect_ratio=binary_arr.shift();
-		// console.log(JSON.parse(JSON.stringify(binary_arr)))
-		if(packed_field_result.globalColorTableFlag==1){
-			image_struct.globalColorTable=getColorTable(binary_arr,packed_field_result.globalColorTableSize);
+		});
+		getData(binary_arr,image_struct,1,"bgColorIndex","getEdge");
+		getData(binary_arr,image_struct,1,"pixelAspectRatio","getEdge");
+		if(image_struct.packedField.value.globalColorTableFlag==1){
+			var size=image_struct.packedField.value.globalColorTableSize;
+			var count=Math.pow(2,parseInt(size,2)+1)*3;
+			getData(binary_arr,image_struct,count,"globalColorTable","getColorTable");
 		}
-		// console.log(image_struct.globalColorTable)
-		
-		// console.log(image_struct.globalColorTable)
+		var start=Date.now();
+		var count=0;
+		while(true){
+			var first=binary_arr[image_struct.pointer];
+			var second=binary_arr[image_struct.pointer+1];
+			if(first==33){
+				var second_check_arr={
+					1:"PlainTextExtension",249:"GraphicsControlExtension",254:"CommentExtension",255:"ApplicationExtension",
+				};
+				if(second_check_arr[second]){
+					// getData(binary_arr,image_struct,second_check_arr[second]);
+				}
+			}
+			
+			if(first==44){
+				
+				
+			}
+			
+			if(first==59){
+				break;
+			}
+			if((Date.now()-start)/1000>1){
+				console.log("超過兩秒 無窮迴圈 ",binary_arr)
+				break;
+			}
+			count++;
+		}
+
+		// getData(binary_arr,image_struct,1,"bgColorIndex","ExtensionProcess");
+		// ExtensionProcess(binary_arr,image_struct);
+		return 
+		// if(binary_arr.pop()!=59){//image end 3B
+			// throw "沒有圖片結尾";
+		// }
+			
 		console.log(image_struct)
 		var ggwp=[]
 		var start=Date.now();
 		while(binary_arr.length){
 			
-			Extension_process(binary_arr);
+			Extension_process(binary_arr,image_struct);
 			if(binary_arr[0]==44){//Image Descriptor
 				var qq=ImageDescriptor(binary_arr);
 				qq.shift();
@@ -90,14 +102,7 @@
 				ggwp.push(canvas)
 			}
 			
-			if((Date.now()-start)/1000>1){
-				// binary_arr=binary_arr.map(function(value){
-					// return value.toString("16")
-				// })
-				// $scope.binary_arr=binary_arr;
-				console.log("超過兩秒 無窮迴圈 ",binary_arr)
-				break;
-			}
+			
 		}
 		$scope.image_struct=image_struct;
 		$scope.ggwp=ggwp;
@@ -134,10 +139,11 @@
 			ng-repeat="block in image_struct.globalColorTable">
 			</div>
 		</div>
-		<div style="display:inline-block;" ng-repeat="pic in ggwp">
-			<div style="height:10px;" ng-repeat="pic_line in pic">
+		<div style="display:inline-block;vertical-align: top;" ng-repeat="pic in ggwp">
+			<div style="height:10px;vertical-align: top;" ng-repeat="pic_line in pic">
 				<div 
 				style="
+				vertical-align: top;
 				display:inline-block;
 				width:10px;height:10px;
 				background:rgb({{image_struct.globalColorTable[pic_line_block].join(',')}});

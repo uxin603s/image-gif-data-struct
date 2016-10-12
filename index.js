@@ -1,3 +1,91 @@
+function getData(binary_arr,image_struct,length,name,callback,callback_arg){
+	if((typeof length)==="number"){
+		var start=image_struct.pointer;
+		var count=image_struct.pointer+length;
+		var value=binary_arr.slice(start,count)
+		var fn=window[callback];
+		if((typeof fn)==="function"){
+			var value=fn(value,callback_arg);
+		}
+		
+		image_struct[name]={start:start,count:count,value:value};
+		image_struct.pointer=count;
+	}else{
+		var fn=window[length];
+		if((typeof fn)==="function"){
+			var value=fn(binary_arr,image_struct);
+		}
+	}
+	
+	
+	
+}
+function getFormat(array){
+	return array.map(function(value){
+		return String.fromCharCode(value);
+	}).join("");
+}
+function getEdge(array){
+	return array.reduce(function(prev,curr,i){
+		return prev+curr*(1+i*255);
+	},0)
+}
+function getPackedField(array,field_arr){
+	var array=array.pop().toString(2).split("");
+	while(array.length<8)array.unshift("0");
+	var result={};
+	for(var i in field_arr){
+		result[i]=array.splice(0,field_arr[i]).join("");
+	}
+	return result;
+}
+function getColorTable(array){
+	var result=[];
+	while(array.length){
+		result.push(array.splice(0,3))
+	}
+	return result;
+}
+
+
+
+function PlainTextExtension(binary_arr){
+	console.log("PlainTextExtension")
+	if(binary_arr[0]==33 && binary_arr[1]==1){
+		binary_arr.shift()
+		binary_arr.shift()
+		var tmp_arr=binary_arr.splice(0,binary_arr.shift());
+		binary_arr.shift()
+	}
+}
+function GraphicsControlExtension(binary_arr){
+	console.log("GraphicsControlExtension")
+	if(binary_arr[0]==33 && binary_arr[1]==249){
+		var tmp_arr=binary_arr.splice(0,8);
+	}
+}
+function CommentExtension(binary_arr){
+	console.log("CommentExtension")
+	if(binary_arr[0]==33 && binary_arr[1]==254){
+		binary_arr.shift()
+		binary_arr.shift()
+		var tmp_arr=binary_arr.splice(0,binary_arr.shift());
+		binary_arr.shift()
+	}
+}
+function ApplicationExtension(binary_arr){
+	console.log("ApplicationExtension")
+	if(binary_arr[0]==33 && binary_arr[1]==255){
+		binary_arr.shift()
+		binary_arr.shift()
+		var tmp_arr=binary_arr.splice(0,binary_arr.shift());
+		binary_arr.shift();
+		binary_arr.shift();
+		binary_arr.shift();
+		binary_arr.shift();
+		binary_arr.shift();
+	}
+}
 function lzw_encode(){
 	
 }
@@ -81,88 +169,13 @@ function decode_byte(binary_arr){
 	return lzw_decode(lzw_min_code,result);
 	// return [];
 }
-function get_canvas_edge(binary_arr){
-	var tmp_arr=binary_arr.splice(0,2);
-	var edge=0;
-	for(var i in tmp_arr){
-		edge+=tmp_arr[i]*(1+i*255);
-	}
-	return edge;
-}
-
-function packed_field(binary_arr,split_arr,callback){
-	var data=binary_arr.splice(0,1).pop().toString(2).split("");
-
-	while(data.length<8)data.unshift("0");
-	var result={};
-	for(var i in split_arr){
-		result[i]=data.splice(0,split_arr[i]).join("");
-	}
-	return result;
-}
-function get_format(binary_arr){
-	var tmp_arr=binary_arr.splice(0,6);
-	var format="";
-	for(var i in tmp_arr){
-		format+=String.fromCharCode(tmp_arr[i]);
-	}
-	return format;
-}
 
 
-function Extension_process(binary_arr){
-	function PlainTextExtension(binary_arr){
-		console.log("PlainTextExtension")
-		if(binary_arr[0]==33 && binary_arr[1]==1){
-			binary_arr.shift()
-			binary_arr.shift()
-			var tmp_arr=binary_arr.splice(0,binary_arr.shift());
-			binary_arr.shift()
-		}
-	}
-	function GraphicsControlExtension(binary_arr){
-		console.log("GraphicsControlExtension")
-		if(binary_arr[0]==33 && binary_arr[1]==249){
-			var tmp_arr=binary_arr.splice(0,8);
-		}
-	}
-	function CommentExtension(binary_arr){
-		console.log("CommentExtension")
-		if(binary_arr[0]==33 && binary_arr[1]==254){
-			binary_arr.shift()
-			binary_arr.shift()
-			var tmp_arr=binary_arr.splice(0,binary_arr.shift());
-			binary_arr.shift()
-		}
-	}
-	function ApplicationExtension(binary_arr){
-		console.log("ApplicationExtension")
-		if(binary_arr[0]==33 && binary_arr[1]==255){
-			binary_arr.shift()
-			binary_arr.shift()
-			var tmp_arr=binary_arr.splice(0,binary_arr.shift());
-			binary_arr.shift();
-			binary_arr.shift();
-			binary_arr.shift();
-			binary_arr.shift();
-			binary_arr.shift();
-		}
-	}
-	if(binary_arr[0]==33){
-		if(binary_arr[1]==1){//Plain Text Extension
-			PlainTextExtension(binary_arr);
-		}
-		if(binary_arr[1]==249){//Graphics Control Extension
-			GraphicsControlExtension(binary_arr);
-		}
-		if(binary_arr[1]==254){//Comment Extension
-			CommentExtension(binary_arr);
-		}
-		if(binary_arr[1]==255){//Application Extension
-			ApplicationExtension(binary_arr);
-		}
-	}
-}
+
+
+
+
+
 function ImageDescriptor(binary_arr){
 	console.log("ImageDescriptor")
 	// console.log(JSON.parse(JSON.stringify(binary_arr)))
@@ -181,12 +194,4 @@ function ImageDescriptor(binary_arr){
 		getColorTable(binary_arr,packed_field_result.LocalColorTableSize);
 	}
 	return tmp_arr;
-}
-function getColorTable(binary_arr,size){
-	var count=Math.pow(2,parseInt(size,2)+1)
-	var result=[];
-	for(var i=0;i<count;i++){
-		result.push(binary_arr.splice(0,3))
-	}
-	return result;
 }
