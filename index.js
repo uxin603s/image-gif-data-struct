@@ -6,6 +6,9 @@ function getData(binary_arr,image_struct,length,callback,callback_arg){
 		var count=start
 		count+=binary_arr[image_struct.pointer+length.start];//長度
 		count+=length.start+1;
+		// if(binary_arr[image_struct.pointer+length.start]==255){
+			// console.log(binary_arr[image_struct.pointer+length.start+1])
+		// }
 		if(length.end)
 			count+=length.end;
 	}
@@ -14,12 +17,11 @@ function getData(binary_arr,image_struct,length,callback,callback_arg){
 	
 	var value=binary_arr.slice(start,count);
 	
-	
 	var fn=window[callback];
 	if((typeof fn)==="function"){
 		var value=fn(value,callback_arg);
 	}
-	return {start:start,count:count,value:value};
+	return {start:start,count:count,value:value,binary:binary_arr.slice(start,count)};
 }
 function getFormat(array){
 	return array.map(function(value){
@@ -74,38 +76,28 @@ function CommentExtension(binary_arr){
 		// binary_arr.shift()
 	// }
 }
-function ApplicationExtension(binary_arr){
-	console.log("ApplicationExtension")
-	// if(binary_arr[0]==33 && binary_arr[1]==255){
-		// binary_arr.shift()
-		// binary_arr.shift()
-		// var tmp_arr=binary_arr.splice(0,binary_arr.shift());
-		// binary_arr.shift();
-		// binary_arr.shift();
-		// binary_arr.shift();
-		// binary_arr.shift();
-		// binary_arr.shift();
-	// }
+function ApplicationExtension(array){
+	// console.log(array)
+	console.log("ApplicationExtension");
+	var dd=getFormat(array.slice(3,3+11));
+	return dd;
+	
 }
 
 function decode_byte(array){
 	console.log("decode_byte")
-	// console.log(array)
-	// console.log(JSON.parse(JSON.stringify(binary_arr)))
-	var lzw_min_code=array[0];
-	var lzw_len=array[1];
 	
-	var data=array.slice(2,array.length-2).reverse().map(function(value){
+	var data=array.reverse().map(function(value){
 		var tmp=value.toString(2).split("");
 		while(tmp.length<8)tmp.unshift("0");
 		return tmp.join("");
 	}).join("").split("");
 	
-	var lzw_end=array[lzw_len+2];
-	// console.log(lzw_min_code,lzw_len,lzw_end,data)
-	var result=[];
+	return data;
+	
 	while(data.length){
 		var count=(result.length*1+Math.pow(2,lzw_min_code)).toString(2).length;
+		console.log(count)
 		if(data.length<count){// 補滿8位元用 可捨棄
 			break;
 		}
@@ -113,11 +105,11 @@ function decode_byte(array){
 		var t2=parseInt(t1,2);
 		result.push(t2);
 	}
-	
-	return lzw_decode(lzw_min_code,result);
+	return result;
 }
 
 function lzw_decode(lzw_min_code,array){
+	console.log("lzw_decode")
 	var count=Math.pow(2,lzw_min_code);
 	var table=[];
 	for(var i=0;i<count;i++){
